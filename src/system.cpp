@@ -4,17 +4,13 @@
 #include <thread>
 
 float uSys = 0.f;
-// get cpu id and information, you can use `proc/cpuinfo`
 
+// Get CPU id and information
 string CPUinfo()
 {
     char CPUBrandString[0x40];
     unsigned int CPUInfo[4] = {0, 0, 0, 0};
 
-    // unix system
-    // for windoes maybe we must add the following
-    // __cpuid(regs, 0);
-    // regs is the array of 4 positions
     __cpuid(0x80000000, CPUInfo[0], CPUInfo[1], CPUInfo[2], CPUInfo[3]);
     unsigned int nExIds = CPUInfo[0];
 
@@ -55,6 +51,7 @@ const char *getOsName()
 #endif
 }
 
+// Get all processes currently running
 void getProcesses(vector<Process> &tabProcess)
 {
     tabProcess.clear();
@@ -141,6 +138,7 @@ void getProcesses(vector<Process> &tabProcess)
     closedir(repo);
 }
 
+// Get CPU usage in percent
 void getCPUPercentage(float &CPUPercentage, int fps)
 {
     std::ifstream CPUData("/proc/stat");
@@ -200,6 +198,7 @@ void getCPUPercentage(float &CPUPercentage, int fps)
     }
 }
 
+// Get fan spped rotation in RPM
 void getFanRPM(float &rpm)
 {
     system("sensors > faninfo.txt");
@@ -226,10 +225,9 @@ void getFanRPM(float &rpm)
 
 void getDeviceThermalState(float &thermal_state)
 {
-    cout << "j't'écoute tkt pas mon pote" << flush;
     ofstream file("therminfo.txt");
     if(!file)
-        cout << "g pas reussi gros" << endl;
+        cout << "Unable to write to the file." << endl;
     file.close();
     system("sensors > therminfo.txt");
     std::ifstream fanData("therminfo.txt");
@@ -265,7 +263,6 @@ void getFanInfos(string &level)
         std::cout << "File not found." << std::endl;
         exit(EXIT_FAILURE);
     }
-    // getline(fanLevel, temp);
     fanLevel >> level;
     fanLevel.close();
 }

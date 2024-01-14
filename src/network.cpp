@@ -1,34 +1,31 @@
 #include "header.h"
 
-// /proc/net/dev pour le reste
-
 Networks getIps()
 {
     Networks ip_addr;
-    ifaddrs *network;
-    getifaddrs(&network);
-    for (auto addr = network; addr != NULL; addr = addr->ifa_next)
-    {
-        if (!ip_addr.ip4s.empty())
-        {
-            if (addr->ifa_name == ip_addr.ip4s[0].name)
-                break;
-        }
+    struct ifaddrs *network;
 
-        if (addr->ifa_addr != NULL && addr->ifa_addr->sa_family == AF_INET)
+    if (getifaddrs(&network) == -1)
+    {
+        std::cerr << "Error getting network interfaces." << std::endl;
+        return ip_addr;
+    }
+
+    for (struct ifaddrs *addr = network; addr != nullptr; addr = addr->ifa_next)
+    {
+        if (addr->ifa_addr != nullptr && addr->ifa_addr->sa_family == AF_INET)
         {
             IP4 temp;
-            inet_ntop(AF_INET, network->ifa_addr, temp.addressBuffer, INET_ADDRSTRLEN);
+            inet_ntop(AF_INET, &((struct sockaddr_in*)addr->ifa_addr)->sin_addr, temp.addressBuffer, INET_ADDRSTRLEN);
             temp.name = addr->ifa_name;
             getNetworks(temp);
             ip_addr.ip4s.push_back(temp);
         }
     }
+
     freeifaddrs(network);
     return ip_addr;
 }
-
-//test
 
 void getNetworks(IP4 &net)
 {
@@ -62,7 +59,6 @@ void getNetworks(IP4 &net)
                 }
             }
             break;
-            // récupérer toutes les données qui sont en bordel
         }
     }
 }

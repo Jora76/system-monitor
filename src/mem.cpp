@@ -4,6 +4,7 @@
 string result;
 struct statvfs fsInfo;
 
+// Get virtual and physic memory usage
 void getMemState(float &memState, float &memTotal, float &swapState, float &swapTotal)
 {
     float memTaken;
@@ -18,26 +19,26 @@ void getMemState(float &memState, float &memTotal, float &swapState, float &swap
     {
         while (getline(memData, result))
         {
-            string test;
+            string temp;
             if (result.find("MemTotal:") != string::npos)
             {
-                test = result.substr(17, 7);
-                memTotal = stof(test);
+                temp = result.substr(17, 7);
+                memTotal = stof(temp);
             }
             else if (result.find("MemAvailable:") != string::npos)
             {
-                test = result.substr(17, 7);
-                memTaken = stof(test);
+                temp = result.substr(17, 7);
+                memTaken = stof(temp);
             }
             else if (result.find("SwapTotal:") != string::npos)
             {
-                test = result.substr(17, 7);
-                swapTotal = stof(test);
+                temp = result.substr(17, 7);
+                swapTotal = stof(temp);
             }
             else if (result.find("SwapFree:") != string::npos)
             {
-                test = result.substr(17, 7);
-                swapTaken = stof(test);
+                temp = result.substr(17, 7);
+                swapTaken = stof(temp);
             }
         }
         memData.close();
@@ -46,6 +47,7 @@ void getMemState(float &memState, float &memTotal, float &swapState, float &swap
     }
 }
 
+// Get hard disk space taken
 void getHardDiskSpace(float &totalSpace, float &freeSpace)
 {
     if (statvfs("/", &fsInfo) != -1)

@@ -45,6 +45,7 @@ float memState;
 float swapTotal;
 float swapState;
 vector<Process> tabProcess;
+vector<bool> selectedRows;
 
 // --------------   NETWORK    ----------------
 
@@ -52,40 +53,23 @@ array<string, 7> tabDay{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 string tabMonth[12]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 Networks ip_addr;
 
-/*
-NOTE : You are free to change the code as you wish, the main objective is to make the
-       application work and pass the audit.
 
-       It will be provided the main function with the following functions :
-
-       - `void systemWindow(const char *id, ImVec2 size, ImVec2 position)`
-            This function will draw the system window on your screen
-       - `void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)`
-            This function will draw the memory and processes window on your screen
-       - `void networkWindow(const char *id, ImVec2 size, ImVec2 position)`
-            This function will draw the network window on your screen
-*/
-
-// About Desktop OpenGL function loaders:
-//  Modern desktop OpenGL doesn't have a standard portable header file to load OpenGL function pointers.
-//  Helper libraries are often used for this purpose! Here we are supporting a few common ones (gl3w, glew, glad).
-//  You may use another loader/header of your choice (glext, glLoadGen, etc.), or chose to manually implement your own.
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
-#include <GL/gl3w.h> // Initialize with gl3wInit()
+#include <GL/gl3w.h> 
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
-#include <GL/glew.h> // Initialize with glewInit()
+#include <GL/glew.h> 
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
-#include <glad/glad.h> // Initialize with gladLoadGL()
+#include <glad/glad.h> 
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD2)
-#include <glad/gl.h> // Initialize with gladLoadGL(...) or gladLoaderLoadGL()
+#include <glad/gl.h> 
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING2)
-#define GLFW_INCLUDE_NONE      // GLFW including OpenGL headers causes ambiguity or multiple definition errors.
-#include <glbinding/Binding.h> // Initialize with glbinding::Binding::initialize()
+#define GLFW_INCLUDE_NONE      
+#include <glbinding/Binding.h> 
 #include <glbinding/gl/gl.h>
 using namespace gl;
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING3)
-#define GLFW_INCLUDE_NONE        // GLFW including OpenGL headers causes ambiguity or multiple definition errors.
-#include <glbinding/glbinding.h> // Initialize with glbinding::initialize()
+#define GLFW_INCLUDE_NONE        
+#include <glbinding/glbinding.h> 
 #include <glbinding/gl/gl.h>
 using namespace gl;
 #else
@@ -95,12 +79,9 @@ using namespace gl;
 // systemWindow, display information for the system monitorization
 void systemWindow(const char *id, ImVec2 size, ImVec2 position)
 {
-    // Initialisation de la fenêtre
     ImGui::Begin(id);
     ImGui::SetWindowSize(id, size);
     ImGui::SetWindowPos(id, position);
-
-    // Les 5 premiers trucs d'information
 
     ImGui::Text("Operating System Used : %s", osName);
     ImGui::Text("Computer name : %s", hostname);
@@ -109,7 +90,6 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::Text("Number of working processes : %ld\n", tabProcess.size());
     ImGui::Separator();
 
-    // Onglets
     if (ImGui::BeginTabBar("TabBar"))
     {
         if (ImGui::BeginTabItem("CPU"))
@@ -147,14 +127,12 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
                 snprintf(text, sizeof(text), "Calculation in progress...");
 
             ImGui::PlotLines("CPU", CPUState.data(), static_cast<int>(CPUState.size()), 0, text, 0.f, system_graphScale, ImVec2(0, 170));
-            // free(hostname);
             ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("Fan"))
         {
             const char *fan_status = (char *)malloc(10);
-            //getFanRPM(fanRPM);
             getFanInfos(fan_level);
             if (fanRPM > 0.f)
             {
@@ -231,15 +209,13 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
             ImGui::EndTabItem();
         }
 
-        // proc/numéro du processus/status
-
         ImGui::EndTabBar();
     }
 
     ImGui::End();
 }
 
-// memoryProcessesWindow, display information for the memory and processes information
+// memory and processes, display memory and processes window
 void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
 {
     ImGui::Begin(id);
@@ -248,66 +224,69 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
     char text[100];
     thread mem(getMemState, std::ref(memState), ref(memTotal), ref(swapState), ref(swapTotal));
     mem.detach();
-
     snprintf(text, sizeof(text), "%.2f / %.2fGB", memState, memTotal / 1000000.f);
     ImGui::Text("Physic Memory (RAM) :");
     ImGui::ProgressBar((memState) / (memTotal / 1000000.f), ImVec2(550, 15), text);
     ImGui::Text("0 GB                                                                       %.2f GB", memTotal / 1000000.f);
-
     snprintf(text, sizeof(text), "%.2f / %.2fGB", swapState, swapTotal / 1000000.f);
     ImGui::Text("\nVirtual Memory (SWAP) :");
     ImGui::ProgressBar((swapState) / (swapTotal / 1000000.f), ImVec2(550, 15), text);
     ImGui::Text("0 GB                                                                       %.2f GB", swapTotal / 1000000.f);
-
     snprintf(text, sizeof(text), "%.0f / %.0fGB", totalSpace - freeSpace, totalSpace);
     ImGui::Text("\nDisk :");
     ImGui::ProgressBar((totalSpace - freeSpace) / totalSpace, ImVec2(550, 15), text);
     ImGui::Text("0 GB                                                                       %.0f GB", totalSpace);
+    selectedRows.resize(tabProcess.size(), false);
     if (ImGui::BeginTabBar("ProcessesBar"))
     {
-        if (ImGui::CollapsingHeader("Process Table"))
+        ImGui::Text("filter the process by name:");
+        string searchBuffer;
+        ImGui::InputText("filter", &searchBuffer);
+        if (ImGui::BeginTable("ProcessTable", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders))
         {
-            // char searchBuffer[256];
-            ImGui::Text("filter the process by name:");
-            string searchBuffer;
-            ImGui::InputText("filter", &searchBuffer);
-
-            ImGui::BeginTable("Process table", 5);
             ImGui::TableSetupColumn("PID");
             ImGui::TableSetupColumn("Name");
             ImGui::TableSetupColumn("State");
             ImGui::TableSetupColumn("CPU usage");
             ImGui::TableSetupColumn("Memory usage");
             ImGui::TableHeadersRow();
-
+            int i = 0;
             for (auto proc : tabProcess)
             {
                 if (searchBuffer.empty() || proc.name.find(searchBuffer) != string::npos)
                 {
                     ImGui::TableNextRow();
-
                     ImGui::TableSetColumnIndex(0);
                     ImGui::Text("%d", proc.PID);
+                    ImGui::SameLine();
+                    if (ImGui::Selectable(("##selectable" + to_string(i)).c_str(), selectedRows[i], ImGuiSelectableFlags_SpanAllColumns))
+                    {
+                        selectedRows[i] = !selectedRows[i];
+                    }
+                    if (!selectedRows[i])
+                    {
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(0, 0, 0, 0));
+                    }
+                    else
+                    {
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(0, 0, 255, 255));
+                    }
 
                     ImGui::TableSetColumnIndex(1);
                     ImGui::Text("%s", proc.name.c_str());
-
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("%s", proc.state.c_str());
-
                     ImGui::TableSetColumnIndex(3);
                     ImGui::Text("%.2f%%", proc.CPU);
-
                     ImGui::TableSetColumnIndex(4);
                     ImGui::Text("%.2f%%", (100 * proc.MEM) / memTotal);
                 }
+                i++;
             }
-
             ImGui::EndTable();
         }
         ImGui::EndTabBar();
     }
-
     ImGui::End();
 }
 
@@ -322,12 +301,10 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
     time_t time = std::chrono::system_clock::to_time_t(now);
     auto date = gmtime(&time);
 
-    // Attention : lundi le programme risque de planter à cause du date->tm_wday-1
     ImGui::Text("%s %s %d %d:%d:%d %d", tabDay[date->tm_wday].data(), tabMonth[date->tm_mon].data(), date->tm_mday, date->tm_hour + 2, date->tm_min, date->tm_sec, 1900 + date->tm_year);
     ImGui::Text("");
     ImGui::Separator();
 
-    // AF_INET = ipv4
     ip_addr = getIps();
 
     ImGui::Text("\nip4 network :");
@@ -354,7 +331,7 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
             ImGui::TableSetupColumn("multicast");
             ImGui::TableHeadersRow();
 
-            for (auto net : ip_addr.ip4s)
+            for (auto &net : ip_addr.ip4s)
             {
                 ImGui::TableNextRow();
 
@@ -511,17 +488,13 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
 // Main code
 int main(int, char **)
 {
-    // Setup SDL
-    // (Some versions of SDL before <2.0.10 appears to have performance/stalling issues on a minority of Windows systems,
-    // depending on whether SDL_INIT_GAMECONTROLLER is enabled or disabled.. updating to latest version of SDL is recommended!)
-
+   
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
 
-    // GL 3.0 + GLSL 130
     const char *glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -536,7 +509,7 @@ int main(int, char **)
     SDL_Window *window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1); // Enable vsync
+    SDL_GL_SetSwapInterval(1);
 
     // Initialize OpenGL loader
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
@@ -546,7 +519,7 @@ int main(int, char **)
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
     bool err = gladLoadGL() == 0;
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD2)
-    bool err = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress) == 0; // glad2 recommend using the windowing library loader instead of the (optionally) bundled one.
+    bool err = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress) == 0; 
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING2)
     bool err = false;
     glbinding::Binding::initialize();
@@ -555,7 +528,7 @@ int main(int, char **)
     glbinding::initialize([](const char *name)
                           { return (glbinding::ProcAddress)SDL_GL_GetProcAddress(name); });
 #else
-    bool err = false; // If you use IMGUI_IMPL_OPENGL_LOADER_CUSTOM, your loader is likely to requires some form of initialization.
+    bool err = false; 
 #endif
     if (err)
     {
@@ -576,8 +549,6 @@ int main(int, char **)
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // background color
-    // note : you are free to change the style of the application
     ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 
     hostname = (char *)malloc(10);
@@ -590,11 +561,6 @@ int main(int, char **)
     bool done = false;
     while (!done)
     {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {

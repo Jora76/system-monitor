@@ -1,4 +1,3 @@
-// To make sure you don't declare the function more than once by including the header multiple times.
 #ifndef header_H
 #define header_H
 
@@ -95,8 +94,7 @@ struct Process
     float MEM = 0.f;
 };
 
-// student DONE : system stats
-//void CPUinfo(char *CPUBrandString);
+// system stats
 string CPUinfo();
 const char *getOsName();
 void getProcesses(vector<Process> &tabProcess);
@@ -105,11 +103,11 @@ void getFanRPM(float &rpm);
 void getFanInfos(string &level);
 void getDeviceThermalState(float &thermal_state);
 
-// student DONE : memory and processes
+// memory and processes
 void getMemState(float &memState, float &memTotal, float &swapState, float &swapTotal);
 void getHardDiskSpace(float &totalSpace, float &freeSpace);
 
-// student TODO : network
+// network
 Networks getIps();
 void setNet_attr(IP4 &net, int attr_code, string data);
 void getNetworks(IP4 &net);
